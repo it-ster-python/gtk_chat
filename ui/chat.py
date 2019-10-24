@@ -1,7 +1,7 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
+from gi.repository import Gtk, GdkPixbuf
 from ui import login
 import redis
 import socket
@@ -22,41 +22,107 @@ class ChatWindow(Gtk.Window):
         self.connection = None
         self.__interfase()
 
-
     def __interfase(self):
         self.set_position(Gtk.WindowPosition.CENTER)
         self.set_size_request(800, 600)
 
         master_box = Gtk.Box()
+        master_box.set_spacing(5)
         self.add(master_box)
 
         left_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         left_box.set_size_request(200, -1)
         master_box.pack_start(left_box, False, True, 0)
+        separator = Gtk.VSeparator()
+        master_box.pack_start(separator, False, True, 0)
 
         center_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         master_box.pack_start(center_box, True, True, 0)
+        separator = Gtk.VSeparator()
+        master_box.pack_start(separator, False, True, 0)
 
         right_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         right_box.set_size_request(200, -1)
         master_box.pack_start(right_box, False, True, 0)
 
-        avatar = Gtk.Image()
-        avatar.set_from_file(
-            os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "gtk_chat_avatar.png"
-            )
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            filename=os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "gtk_chat_avatar.png"
+            ),
+            width=190,
+            height=190,
+            preserve_aspect_ratio=True,
         )
+        avatar = Gtk.Image.new_from_pixbuf(pixbuf)
         left_box.pack_start(avatar, False, True, 5)
-
+        separator = Gtk.HSeparator()
+        left_box.pack_start(separator, False, True, 5)
         user_label = Gtk.Label(label="User name")
         # Проверить растягивание
         left_box.pack_start(user_label, False, True, 5)
+        separator = Gtk.HSeparator()
+        left_box.pack_start(separator, False, True, 5)
 
+        l_space = Gtk.Alignment()
+        left_box.pack_start(l_space, True, True, 5)
+
+        separator = Gtk.HSeparator()
+        left_box.pack_start(separator, False, True, 5)
+
+        b_box = Gtk.ButtonBox()
+        left_box.pack_start(b_box, False, True, 5)
+        close_button = Gtk.Button(label="Close")
+        close_button.connect("clicked", Gtk.main_quit)
+        b_box.pack_start(close_button, True, True, 5)
+
+        scroll_box = Gtk.ScrolledWindow()
+        scroll_box.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        center_box.pack_start(scroll_box, True, True, 5)
+
+        chat_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        scroll_box.add(chat_box)
+        separator = Gtk.HSeparator()
+        center_box.pack_start(separator, False, False, 5)
+
+        input_message = Gtk.Frame()
+        message_box = Gtk.Box()
+        input_message.add(message_box)
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            filename=os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "gtk_chat_avatar.png"
+            ),
+            width=100,
+            height=100,
+            preserve_aspect_ratio=True,
+        )
+        input_avatar = Gtk.Image.new_from_pixbuf(pixbuf)
+        message_box.pack_start(input_avatar, False, True, 5)
+        message_box.pack_start(
+            Gtk.Label(
+                label="ALWAYS - The scrollbar is always visible.\n\
+AUTOMATIC - The scrollbar will appear and disappear as necessary.\n\
+EXTERNAL - Don't show a scrollbar, but don't force the size to follow the content.\n\
+NEVER - The scrollbar should never appear."
+            ), True, False, 5
+        )
+        chat_box.pack_start(input_message, False, True, 5)
+
+        # output_message = Gtk.Frame()
+        # chat_box.pack_start(output_message, False, True, 5)
+
+        send_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        send_box.set_spacing(5)
+        center_box.pack_start(send_box, False, True, 5)
+        separator = Gtk.HSeparator()
+        center_box.pack_start(separator, False, False, 5)
+
+        smile_button = Gtk.Button(label=":-}")
+        send_box.pack_start(smile_button, False, False, 0)
         message_entry = Gtk.Entry()
         # Проверить растягивание
-        center_box.pack_start(message_entry, False, True, 5)
+        send_box.pack_start(message_entry, True, True, 0)
+        send_button = Gtk.Button(label="Send")
+        send_box.pack_start(send_button, False, False, 0)
 
         favorit_label = Gtk.Label(label="Избранное")
         # Проверить растягивание
