@@ -2,10 +2,10 @@ import gi
 
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk, GdkPixbuf
-from ui import login
+# from ui import login
 import redis
 import socket
-import select
+# import select
 import json
 import os
 
@@ -47,7 +47,8 @@ class ChatWindow(Gtk.Window):
 
         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             filename=os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "gtk_chat_avatar.png"
+                os.path.dirname(os.path.abspath(__file__)),
+                "gtk_chat_avatar.png"
             ),
             width=190,
             height=190,
@@ -84,31 +85,73 @@ class ChatWindow(Gtk.Window):
         separator = Gtk.HSeparator()
         center_box.pack_start(separator, False, False, 5)
 
+        # input_message = Gtk.Frame()
+        # message_box = Gtk.Box()
+        # input_message.add(message_box)
+        # pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+        #     filename=os.path.join(
+        #         os.path.dirname(
+        #             os.path.abspath(__file__)
+        #         ),
+        #         "gtk_chat_avatar.png"
+        #     ),
+        #     width=100,
+        #     height=100,
+        #     preserve_aspect_ratio=True,
+        # )
+        # input_avatar = Gtk.Image.new_from_pixbuf(pixbuf)
+        # message_box.pack_start(input_avatar, False, True, 5)
+        # test_label = Gtk.Label()
+        # test_label.set_markup(
+        #     ("<b>ALWAYS</b> - The scrollbar is always visible. "
+        #      "<s>AUTOMATIC</s> - The scrollbar will "
+        #      "appear and disappear as necessary. "
+        #      "EXTERNAL - Don't show a scrollbar, "
+        #      "but don't force the size to follow the content. "
+        #      "NEVER - The scrollbar should never appear.")
+        # )
+        # test_label.set_selectable(True)
+        # test_label.set_line_wrap(True)
+        # message_box.pack_start(
+        #     test_label, True, False, 5
+        # )
+        # chat_box.pack_start(input_message, False, True, 5)
+
+        self.show_all()
+
+    def __get_message_box(self, message, input=True):
         input_message = Gtk.Frame()
         message_box = Gtk.Box()
         input_message.add(message_box)
         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             filename=os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "gtk_chat_avatar.png"
+                os.path.dirname(
+                    os.path.abspath(__file__)
+                ),
+                "gtk_chat_avatar.png"
             ),
             width=100,
             height=100,
             preserve_aspect_ratio=True,
         )
         input_avatar = Gtk.Image.new_from_pixbuf(pixbuf)
-        message_box.pack_start(input_avatar, False, True, 5)
+        message_box.pack_end(input_avatar, False, True, 5)
+        test_label = Gtk.Label()
+        test_label.set_markup(
+            ("<b>ALWAYS</b> - The scrollbar is always visible. "
+             "<s>AUTOMATIC</s> - The scrollbar will "
+             "appear and disappear as necessary. "
+             "EXTERNAL - Don't show a scrollbar, "
+             "but don't force the size to follow the content. "
+             "NEVER - The scrollbar should never appear.")
+        )
+        test_label.set_selectable(True)
+        test_label.set_line_wrap(True)
+        test_label.set_justify(Gtk.Justification.RIGHT)
         message_box.pack_start(
-            Gtk.Label(
-                label="ALWAYS - The scrollbar is always visible.\n\
-AUTOMATIC - The scrollbar will appear and disappear as necessary.\n\
-EXTERNAL - Don't show a scrollbar, but don't force the size to follow the content.\n\
-NEVER - The scrollbar should never appear."
-            ), True, False, 5
+            test_label, True, False, 5
         )
         chat_box.pack_start(input_message, False, True, 5)
-
-        # output_message = Gtk.Frame()
-        # chat_box.pack_start(output_message, False, True, 5)
 
         send_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         send_box.set_spacing(5)
@@ -127,8 +170,6 @@ NEVER - The scrollbar should never appear."
         favorit_label = Gtk.Label(label="Избранное")
         # Проверить растягивание
         right_box.pack_start(favorit_label, False, True, 5)
-
-        self.show_all()
 
     def regy_date(self):
         self.login.hide()
