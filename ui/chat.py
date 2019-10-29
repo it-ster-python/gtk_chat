@@ -48,7 +48,7 @@ class ChatWindow(Gtk.Window):
         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             filename=os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
-                "gtk_chat_avatar.png"
+                "Avatar.png"
             ),
             width=190,
             height=190,
@@ -80,78 +80,10 @@ class ChatWindow(Gtk.Window):
         scroll_box.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         center_box.pack_start(scroll_box, True, True, 5)
 
-        chat_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        scroll_box.add(chat_box)
+        self.chat_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        scroll_box.add(self.chat_box)
         separator = Gtk.HSeparator()
         center_box.pack_start(separator, False, False, 5)
-
-        # input_message = Gtk.Frame()
-        # message_box = Gtk.Box()
-        # input_message.add(message_box)
-        # pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-        #     filename=os.path.join(
-        #         os.path.dirname(
-        #             os.path.abspath(__file__)
-        #         ),
-        #         "gtk_chat_avatar.png"
-        #     ),
-        #     width=100,
-        #     height=100,
-        #     preserve_aspect_ratio=True,
-        # )
-        # input_avatar = Gtk.Image.new_from_pixbuf(pixbuf)
-        # message_box.pack_start(input_avatar, False, True, 5)
-        # test_label = Gtk.Label()
-        # test_label.set_markup(
-        #     ("<b>ALWAYS</b> - The scrollbar is always visible. "
-        #      "<s>AUTOMATIC</s> - The scrollbar will "
-        #      "appear and disappear as necessary. "
-        #      "EXTERNAL - Don't show a scrollbar, "
-        #      "but don't force the size to follow the content. "
-        #      "NEVER - The scrollbar should never appear.")
-        # )
-        # test_label.set_selectable(True)
-        # test_label.set_line_wrap(True)
-        # message_box.pack_start(
-        #     test_label, True, False, 5
-        # )
-        # chat_box.pack_start(input_message, False, True, 5)
-
-        self.show_all()
-
-    def __get_message_box(self, message, input=True):
-        input_message = Gtk.Frame()
-        message_box = Gtk.Box()
-        input_message.add(message_box)
-        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-            filename=os.path.join(
-                os.path.dirname(
-                    os.path.abspath(__file__)
-                ),
-                "gtk_chat_avatar.png"
-            ),
-            width=100,
-            height=100,
-            preserve_aspect_ratio=True,
-        )
-        input_avatar = Gtk.Image.new_from_pixbuf(pixbuf)
-        message_box.pack_end(input_avatar, False, True, 5)
-        test_label = Gtk.Label()
-        test_label.set_markup(
-            ("<b>ALWAYS</b> - The scrollbar is always visible. "
-             "<s>AUTOMATIC</s> - The scrollbar will "
-             "appear and disappear as necessary. "
-             "EXTERNAL - Don't show a scrollbar, "
-             "but don't force the size to follow the content. "
-             "NEVER - The scrollbar should never appear.")
-        )
-        test_label.set_selectable(True)
-        test_label.set_line_wrap(True)
-        test_label.set_justify(Gtk.Justification.RIGHT)
-        message_box.pack_start(
-            test_label, True, False, 5
-        )
-        chat_box.pack_start(input_message, False, True, 5)
 
         send_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
         send_box.set_spacing(5)
@@ -170,6 +102,62 @@ class ChatWindow(Gtk.Window):
         favorit_label = Gtk.Label(label="Избранное")
         # Проверить растягивание
         right_box.pack_start(favorit_label, False, True, 5)
+
+        test_input = {
+            "message": (
+                "Parses str which is marked up with the Pango text"
+                "markup language, setting the label’s text and attribute list "
+                "based on the parse results. If characters in str are "
+                "preceded by an underscore, they are underlined that they "
+                "indicating represent a keyboard accelerator called a mnemonic"
+            ),
+            "user": "Vasia"
+        }
+        test_output = {
+            "message": (
+                "If the label has been set so that it has an mnemonic"
+                "key (using i.e. Gtk.Label.set_markup_with_mnemonic(),"
+                "Gtk.Label.set_text_with_mnemonic(),"
+                "Gtk.Label.new_with_mnemonic() or"
+                "the “use_underline” property) the label"
+                "can be associated"
+            ),
+            "user": "User"
+        }
+
+        self.__add_message_box(test_input)
+        self.__add_message_box(test_output, False)
+
+        self.show_all()
+
+    def __add_message_box(self, data, input=True):
+        message_frame = Gtk.Frame()
+        message_box = Gtk.Box()
+        message_frame.add(message_box)
+        pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+            filename=os.path.join(
+                os.path.dirname(
+                    os.path.abspath(__file__)
+                ),
+                f".contacts/{data['user']}.png" if input
+                else "Avatar.png"
+            ),
+            width=100,
+            height=100,
+            preserve_aspect_ratio=True,
+        )
+        avatar = Gtk.Image.new_from_pixbuf(pixbuf)
+        message_box.pack_end(avatar, False, True, 5)
+        test_label = Gtk.Label()
+        test_label.set_markup(data["message"])
+        test_label.set_selectable(True)
+        test_label.set_line_wrap(True)
+        if not input:
+            test_label.set_justify(Gtk.Justification.RIGHT)
+        message_box.pack_start(
+            test_label, True, False, 5
+        )
+        self.chat_box.pack_start(message_frame, False, True, 5)
 
     def regy_date(self):
         self.login.hide()
