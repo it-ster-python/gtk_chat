@@ -7,9 +7,8 @@ from ui import event
 
 
 class LoginWindow(Gtk.Window):
-    def __init__(self, callback):
+    def __init__(self):
         super().__init__(title="Mega Chat | Login")
-        event.Event(name="login", callback=callback)
         self.is_login = False
         self.is_password = False
 
