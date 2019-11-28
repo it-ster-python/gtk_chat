@@ -5,10 +5,12 @@ from gi.repository import Gtk, GdkPixbuf
 from ui import login
 import redis
 import socket
-# import select
+
+import select
 import json
 import os
 from ui import event
+import pickle
 
 
 HOST = "127.0.0.1"
@@ -49,8 +51,7 @@ class ChatWindow(Gtk.Window):
 
         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             filename=os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "Avatar.png"
+                os.path.dirname(os.path.abspath(__file__)), "Avatar.png"
             ),
             width=190,
             height=190,
@@ -95,10 +96,11 @@ class ChatWindow(Gtk.Window):
 
         smile_button = Gtk.Button(label=":-}")
         send_box.pack_start(smile_button, False, False, 0)
-        message_entry = Gtk.Entry()
+        self.message_entry = Gtk.Entry()
         # Проверить растягивание
-        send_box.pack_start(message_entry, True, True, 0)
+        send_box.pack_start(self.message_entry, True, True, 0)
         send_button = Gtk.Button(label="Send")
+        send_button.connect("clicked", self.on_send_message)
         send_box.pack_start(send_button, False, False, 0)
 
         favorit_label = Gtk.Label(label="Избранное")
@@ -111,11 +113,8 @@ class ChatWindow(Gtk.Window):
         message_frame.add(message_box)
         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             filename=os.path.join(
-                os.path.dirname(
-                    os.path.abspath(__file__)
-                ),
-                f".contacts/{data['user']}.png" if input
-                else "Avatar.png"
+                os.path.dirname(os.path.abspath(__file__)),
+                f".contacts/{data['user']}.png" if input else "Avatar.png",
             ),
             width=100,
             height=100,
@@ -136,12 +135,12 @@ class ChatWindow(Gtk.Window):
 
     def regy_date(self, *args, **kwargs):
         self.login_win.hide()
-        storage = redis.StrictRedis()
+        self.storage = redis.StrictRedis()
         try:
-            self.login = str(storage.get("login"))
-            self.password = str(storage.get("password"))
+            self.login = pickle.loads(self.storage.get("login"))
+            self.password = pickle.loads(self.storage.get("password"))
         except redis.RedisError:
-            print("Данных почему то не!")
+            print("Данных почему то нет!")
             Gtk.main_quit()
         else:
             self.__create_conntetion()
@@ -151,21 +150,33 @@ class ChatWindow(Gtk.Window):
         self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.connection.connect((HOST, PORT))
-        result = self.connection.recv(2048)
-        data = json.loads(result.decode("utf-8"))
+        response = self.connection.recv(2048)
+        data = json.loads(response.decode("utf-8"))
         if data.get("status") != "OK":
             print(data.get("message"))
             Gtk.main_quit()
         else:
-            data = json.dumps({"login": self.login, "password": self.password})
-            self.connection.send(data.encode("utf-8"))
-            self.__run()
+            request = json.dumps(
+                {"login": self.login, "password": self.password}
+            )
+            request += "\r\n"
+            self.connection.send(request.encode("utf-8"))
+            response = self.connection.recv(2048)
+            auth_data = json.loads(response.decode("utf-8"))
+            if auth_data.get("status") == "OK":
+                self.__run()
+            else:
+                print(data.get("message"))
+                Gtk.main_quit()
 
     def __run(self):
-        pass
         # self.epoll = select.epoll()
         # self.connection.setblocking(0)
-        # self.epoll.register(self.sock.fileno(), select.EPOLLIN)
+        # self.epoll.register(self.connection.fileno(), select.EPOLLIN)
+        pass
+
+    def on_send_message(self, widget):
+        pass
 
 
 # test_input = {
