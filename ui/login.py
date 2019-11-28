@@ -4,6 +4,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 import redis
 from ui import event
+import pickle
 
 
 class LoginWindow(Gtk.Window):
@@ -28,12 +29,14 @@ class LoginWindow(Gtk.Window):
         label_login = Gtk.Label(label="Логин")
         login_box.pack_start(label_login, True, False, 5)
         self.login = Gtk.Entry()
+        self.login.set_text("Kirill")
         self.login.connect("changed", self.on_change_login)
         login_box.pack_start(self.login, True, True, 0)
 
         label_password = Gtk.Label(label="Пароль")
         password_box.pack_start(label_password, True, False, 5)
         self.password = Gtk.Entry()
+        self.password.set_text("rbhbkk2019")
         self.password.connect("changed", self.on_changet_password)
         password_box.pack_start(self.password, True, True, 0)
 
@@ -57,7 +60,7 @@ class LoginWindow(Gtk.Window):
         c_box.set_spacing(10)
         self.sign_in = Gtk.Button(label="Sign in")
         self.sign_in.connect("clicked", self.on_sign_in)
-        self.sign_in.set_sensitive(False)
+        # self.sign_in.set_sensitive(False)
         c_box.pack_start(self.sign_in, True, True, 0)
         bottom_box.pack_start(c_box, True, True, 0)
         button_close = Gtk.Button(label="Close")
@@ -70,8 +73,8 @@ class LoginWindow(Gtk.Window):
     @event.Event.origin("login", post=True)
     def on_sign_in(self, button):
         storage = redis.StrictRedis()
-        storage.set("login", self.login.get_text())
-        storage.set("password", self.password.get_text())
+        storage.set("login", pickle.dumps(self.login.get_text()))
+        storage.set("password", pickle.dumps(self.password.get_text()))
         storage.expire("login", 10)
         storage.expire("password", 10)
 
