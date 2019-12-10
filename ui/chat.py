@@ -1,7 +1,7 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GdkPixbuf
+from gi.repository import Gtk, GdkPixbuf, Glib
 from ui import login
 import redis
 import socket
@@ -10,8 +10,9 @@ import json
 import os
 from ui import event
 import pickle
+from threading import Lock
 
-
+LOCK = Lock()
 HOST = "127.0.0.1"
 PORT = 5000
 
@@ -24,6 +25,10 @@ class ChatWindow(Gtk.Window):
         self.login_win.show_all()
         self.connection = None
         self.__interfase()
+        self.chat_name = "default"
+        self.connection = {}
+        self.requests = {}
+        self.responses = {}
 
     def __interfase(self):
         self.set_position(Gtk.WindowPosition.CENTER)
@@ -172,14 +177,52 @@ class ChatWindow(Gtk.Window):
                 Gtk.main_quit()
 
     def __run(self):
+        # TODO закрепить за соединениями имена(названия чатов)
+        # и при отправке запрашивать его имя
+
         # ожидает сообщение от нас и от сервера
-        # self.epoll = select.epoll()
-        # self.connection.setblocking(0)
-        # self.epoll.register(self.connection.fileno(), select.EPOLLIN)
-        pass
+        self.epoll = select.epoll()
+        self.connection.setblocking(0)
+        self.epoll.register(self.connection.fileno(), select.EPOLLIN)
+        self.connections[self.connection.fileno()] = self.connection
+
+        # Glib.timeout_add_seconds(1, self.on_recv_message)
+
+        while True:
+            events = self.epoll.poll(1)
+            for fileno, event in events:
+                if event & select.EPOLLIN:
+                    with LOCK:
+                        self.responses[fileno] = self.connections[fileno].recv(
+                            2048).decode("utf-8")
+                    self.epoll.modify(fileno, select.EPOLLOUT)
+                elif event & select.EPOLLOUT:
+                    self.connections[fileno].send(
+                        self.requests[fileno].encode("utf-8")
+                    )
+                    # добавить проверку на отправление всего объема
+                    del self.requests[fileno]
 
     def on_send_message(self, widget):
-        pass
+        message = self.message_entry.get_text()
+        data = json.dumps(
+            {
+                "message": message,
+                "user": self.login,
+                "chat": self.chat_name
+            }
+        )
+        with LOCK
+            self.requests[self.connection.fileno()] = data
+        self.message_entry.set_text("")
+        # size = self.connection.send(data)
+        # print(len(data) == size)
+
+    def on_recv_message(self, *args):
+        data = None
+        with LOCK:
+            data = self.responses[self.connection.file()]
+            del.
 
 
 # test_input = {
