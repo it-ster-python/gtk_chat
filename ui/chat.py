@@ -11,12 +11,16 @@ import json
 import os
 from ui import event
 import pickle
-from threading import Lock
+from threading import Lock, Thread
 
 
 LOCK = Lock()
 HOST = "127.0.0.1"
 PORT = 5000
+
+
+class Signal():
+    work = True
 
 
 class ChatWindow(Gtk.Window):
@@ -31,6 +35,7 @@ class ChatWindow(Gtk.Window):
         self.connections = {}
         self.requests = {}
         self.responses = {}
+        self.signal = Signal()
 
     def __interfase(self):
         self.set_position(Gtk.WindowPosition.CENTER)
@@ -162,20 +167,26 @@ class ChatWindow(Gtk.Window):
             print(data.get("message"))
             Gtk.main_quit()
         else:
-            request = json.dumps({"login": self.login, "password": self.password})
+            request = json.dumps(
+                {
+                    "login": self.login, "password": self.password
+                }
+            )
             request += "\r\n"
             self.connection.send(request.encode("utf-8"))
             response = self.connection.recv(2048)
             auth_data = json.loads(response.decode("utf-8"))
-            if auth_data.get("status") == "OK":
-                self.__run()
-            else:
+            run = Thread(target=self.__run)
+            if auth_data.get("status") != "OK":
                 print(data.get("message"))
                 Gtk.main_quit()
+                return
+            run.start()
 
     def __run(self):
         """TODO закрепить за соединениями имена (названия чатов).
         При отправке сообщения в чат запрашивать его имя"""
+        # print("RUN", self.signal.work)
         self.epoll = select.epoll()
         self.connection.setblocking(0)
         self.epoll.register(self.connection.fileno(), select.EPOLLIN)
@@ -183,20 +194,22 @@ class ChatWindow(Gtk.Window):
 
         # self.interval = GLib.timeout_add_seconds(1, self.on_recv_message)
 
-        # while True:
-        #     events = self.epoll.poll(1)
-        #     for fileno, event in events:
-        #         if event & select.EPOLLIN:
-        #             with LOCK:
-        #                 self.responses[fileno] = (
-        #                     self.connections[fileno].recv(2048).decode("utf-8")
-        #                 )
-        #             self.epoll.modify(fileno, select.EPOLLOUT)
-        #         elif event & select.EPOLLOUT:
-        #             self.connections[fileno].send(self.requests[fileno].encode("utf-8"))
-        #             # добавить проверку на отправление всего объема данных
-        #             with LOCK:
-        #                 del self.requests[fileno]
+        while True:
+            if not self.signal.work:
+                break
+            events = self.epoll.poll(1)
+            for fileno, event in events:
+                if event & select.EPOLLIN:
+                    with LOCK:
+                        self.responses[fileno] = (
+                            self.connections[fileno].recv(2048).decode("utf-8")
+                        )
+                    self.epoll.modify(fileno, select.EPOLLOUT)
+                elif event & select.EPOLLOUT:
+                    self.connections[fileno].send(self.requests[fileno].encode("utf-8"))
+                    # добавить проверку на отправление всего объема данных
+                    with LOCK:
+                        del self.requests[fileno]
 
     def on_send_message(self, widget):
         message = self.message_entry.get_text()
