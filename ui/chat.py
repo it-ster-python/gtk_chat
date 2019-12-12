@@ -1,7 +1,7 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GdkPixbuf, GLib
+from gi.repository import Gtk, GdkPixbuf
 from ui import login
 import redis
 import socket
@@ -87,7 +87,7 @@ class ChatWindow(Gtk.Window):
         b_box = Gtk.ButtonBox()
         left_box.pack_start(b_box, False, True, 5)
         close_button = Gtk.Button(label="Close")
-        close_button.connect("clicked", Gtk.main_quit)
+        close_button.connect("clicked", self.on_close)
         b_box.pack_start(close_button, True, True, 5)
 
         scroll_box = Gtk.ScrolledWindow()
@@ -186,46 +186,69 @@ class ChatWindow(Gtk.Window):
     def __run(self):
         """TODO закрепить за соединениями имена (названия чатов).
         При отправке сообщения в чат запрашивать его имя"""
-        # print("RUN", self.signal.work)
         self.epoll = select.epoll()
         self.connection.setblocking(0)
+        self.connections["default"] = self.connection
+        self.responses["default"] = None
+        self.requests["default"] = None
         self.epoll.register(self.connection.fileno(), select.EPOLLIN)
-        self.connections[self.connection.fileno()] = self.connection
-
-        # self.interval = GLib.timeout_add_seconds(1, self.on_recv_message)
 
         while True:
             if not self.signal.work:
                 break
+            if self.requests.get("default"):
+                data = self.requests.get("default")
+                if data:
+                    self.connections["default"].send(data.encode("utf-8"))
+                self.requests["default"] = None
+                self.epoll.modify(self.connections["default"].fileno(), select.EPOLLIN)
             events = self.epoll.poll(1)
             for fileno, event in events:
                 if event & select.EPOLLIN:
+                    print("MESSAGE", self.responses.get("default"))
+                    # if self.responses.get("default"):
                     with LOCK:
-                        self.responses[fileno] = (
-                            self.connections[fileno].recv(2048).decode("utf-8")
+                        self.responses["default"] = (
+                            self.connections["default"].recv(2048).decode("utf-8")
                         )
+                    print("NEW MESSAGE", self.responses["default"])
+                    self.responses["default"] = None
                     self.epoll.modify(fileno, select.EPOLLOUT)
-                elif event & select.EPOLLOUT:
-                    self.connections[fileno].send(self.requests[fileno].encode("utf-8"))
-                    # добавить проверку на отправление всего объема данных
-                    with LOCK:
-                        del self.requests[fileno]
+            #     elif event & select.EPOLLOUT:
+            #         if self.requests.get(fileno):
+            #             print(self.requests[fileno], "MESSAGA")
+            #             self.connections[fileno].send(self.requests[fileno].encode("utf-8"))
+            #             # добавить проверку на отправление всего объема данных
+            #             with LOCK:
+            #                 self.requests[fileno] = None
+                    # self.epoll.modify(fileno, select.EPOLLIN)
+            # self.__recv_message()
+
+    def on_close(self, widget):
+        self.signal.work = False
+        for key in self.connections:
+            self.connections[key].close()
+        Gtk.main_quit()
 
     def on_send_message(self, widget):
         message = self.message_entry.get_text()
         data = json.dumps(
             {"message": message, "user": self.login, "chat": self.chat_name}
         )
+        data += "\r\n"
         with LOCK:
-            self.requests[self.connection.fileno()] = data
+            self.requests["default"] = data
         self.message_entry.set_text("")
 
-    def on_recv_message(self, *args):
-        data = None
-        with LOCK:
-            data = self.responses[self.connection.fileno()]
-            del self.responses[self.connection.fileno()]
-        print(data)
+    # def __recv_message(self):
+    #     data = None
+    #     with LOCK:
+    #         try:
+    #             data = self.responses[self.connection.fileno()]
+    #             self.responses[self.connection.fileno()] = ""
+    #         except Exception as err:
+    #             print(err)
+    #     print(data)
 
 
 # test_input = {
