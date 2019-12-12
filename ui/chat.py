@@ -1,7 +1,7 @@
 import gi
 
 gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk, GdkPixbuf, Glib
+from gi.repository import Gtk, GdkPixbuf
 from ui import login
 import redis
 import socket
@@ -10,11 +10,15 @@ import json
 import os
 from ui import event
 import pickle
-from threading import Lock
+from threading import Lock, Thread
 
 LOCK = Lock()
 HOST = "127.0.0.1"
 PORT = 5000
+
+
+class Signal():
+    work = True
 
 
 class ChatWindow(Gtk.Window):
@@ -26,9 +30,10 @@ class ChatWindow(Gtk.Window):
         self.connection = None
         self.__interfase()
         self.chat_name = "default"
-        self.connection = {}
+        self.connections = {}
         self.requests = {}
         self.responses = {}
+        self.signal = Signal()
 
     def __interfase(self):
         self.set_position(Gtk.WindowPosition.CENTER)
@@ -81,7 +86,7 @@ class ChatWindow(Gtk.Window):
         b_box = Gtk.ButtonBox()
         left_box.pack_start(b_box, False, True, 5)
         close_button = Gtk.Button(label="Close")
-        close_button.connect("clicked", Gtk.main_quit)
+        close_button.connect("clicked", self.on_close)
         b_box.pack_start(close_button, True, True, 5)
 
         scroll_box = Gtk.ScrolledWindow()
@@ -170,38 +175,61 @@ class ChatWindow(Gtk.Window):
             self.connection.send(request.encode("utf-8"))
             response = self.connection.recv(2048)
             auth_data = json.loads(response.decode("utf-8"))
-            if auth_data.get("status") == "OK":
-                self.__run()
-            else:
+            run = Thread(target=self.__run)
+            if auth_data.get("status") != "OK":
                 print(data.get("message"))
                 Gtk.main_quit()
+                return
+            run.start()
 
     def __run(self):
         # TODO закрепить за соединениями имена(названия чатов)
         # и при отправке запрашивать его имя
 
         # ожидает сообщение от нас и от сервера
+        # print("RUN", self.signal.work)
         self.epoll = select.epoll()
         self.connection.setblocking(0)
         self.epoll.register(self.connection.fileno(), select.EPOLLIN)
-        self.connections[self.connection.fileno()] = self.connection
-
-        # Glib.timeout_add_seconds(1, self.on_recv_message)
-
+        self.connections["default"] = self.connection
+        self.responses["default"] = None
+        self.requests["default"] = None
+        self.epoll.register(self.connection.fileno(), select.EPOLLIN)
+        
         while True:
+            if not self.signal.work:
+                break
+            if self. requests.get("default"):
+                data = self.requests.get("default")
+                if data:
+                    self.connections["default"].send(data.encode("utf-8"))
+                self.requests["default"] = None
+                self.epoll.modify(self.connection["default"].fileno(), select.EPOLLIN)
             events = self.epoll.poll(1)
             for fileno, event in events:
                 if event & select.EPOLLIN:
+                    print("MESSAGE", self.responses.get["default"])
+                    # if self.responses.get[fileno]:
                     with LOCK:
-                        self.responses[fileno] = self.connections[fileno].recv(
-                            2048).decode("utf-8")
+                        self.responses["default"] = (self.connections[fileno].recv(2048).decode("utf-8"))
+                    print("NEW MESSAGE", self.responses["default"])
+                    self.responses[fileno] = None
                     self.epoll.modify(fileno, select.EPOLLOUT)
-                elif event & select.EPOLLOUT:
-                    self.connections[fileno].send(
-                        self.requests[fileno].encode("utf-8")
-                    )
-                    # добавить проверку на отправление всего объема
-                    del self.requests[fileno]
+            #         elif event & select.EPOLLOUT:
+            #             if self.requests.get(fileno):
+            #                 self.connections[fileno].send(
+            #                     self.requests[fileno].encode("utf-8")
+            #                 )
+            #             # добавить проверку на отправление всего объема
+            #             with LOCK:
+            #                 self.requests[fileno] = None
+            # self.__recv_message()
+
+    def on_close(self, widget):
+        self.signal.work = False
+        for key in self.connections:
+            self.connections[key].close()
+        Gtk.main_quit()
 
     def on_send_message(self, widget):
         message = self.message_entry.get_text()
@@ -212,17 +240,22 @@ class ChatWindow(Gtk.Window):
                 "chat": self.chat_name
             }
         )
-        with LOCK
-            self.requests[self.connection.fileno()] = data
+        data += "\r\n"
+        with LOCK:
+            self.requests["default"] = data
         self.message_entry.set_text("")
         # size = self.connection.send(data)
         # print(len(data) == size)
 
-    def on_recv_message(self, *args):
+    def __recv_message(self):
         data = None
         with LOCK:
-            data = self.responses[self.connection.file()]
-            del.
+            try:
+                data = self.responses[self.connection.fileno()]
+                self.responses[self.connection.fileno()]
+            except Exception as err:
+                print(err)
+        print(data)
 
 
 # test_input = {
