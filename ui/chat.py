@@ -119,13 +119,15 @@ class ChatWindow(Gtk.Window):
         right_box.pack_start(favorit_label, False, True, 5)
 
     def __add_message_box(self, data, input=True):
+        print(data, "MESSAGE")
         message_frame = Gtk.Frame()
         message_box = Gtk.Box()
         message_frame.add(message_box)
         pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
             filename=os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
-                f".contacts/{data['user']}.png" if input else "Avatar.png",
+                # f".contacts/{data['user']}.png" if input else "Avatar.png",
+                "Avatar.png",
             ),
             width=100,
             height=100,
@@ -143,6 +145,7 @@ class ChatWindow(Gtk.Window):
             test_label.set_justify(Gtk.Justification.RIGHT)
         message_box.pack_start(test_label, True, False, 5)
         self.chat_box.pack_start(message_frame, False, True, 5)
+        self.show_all()
 
     def regy_date(self, *args, **kwargs):
         self.login_win.hide()
@@ -200,29 +203,21 @@ class ChatWindow(Gtk.Window):
                 data = self.requests.get("default")
                 if data:
                     self.connections["default"].send(data.encode("utf-8"))
+                    self.__add_message_box(json.loads(data), False)
                 self.requests["default"] = None
                 self.epoll.modify(self.connections["default"].fileno(), select.EPOLLIN)
             events = self.epoll.poll(1)
             for fileno, event in events:
                 if event & select.EPOLLIN:
-                    print("MESSAGE", self.responses.get("default"))
-                    # if self.responses.get("default"):
                     with LOCK:
-                        self.responses["default"] = (
+                        self.responses["default"] = json.loads(
                             self.connections["default"].recv(2048).decode("utf-8")
                         )
-                    print("NEW MESSAGE", self.responses["default"])
+                    if self.responses.get("default"):
+                        self.__add_message_box(self.responses["default"])
+                    # print("NEW MESSAGE", self.responses["default"])
                     self.responses["default"] = None
                     self.epoll.modify(fileno, select.EPOLLOUT)
-            #     elif event & select.EPOLLOUT:
-            #         if self.requests.get(fileno):
-            #             print(self.requests[fileno], "MESSAGA")
-            #             self.connections[fileno].send(self.requests[fileno].encode("utf-8"))
-            #             # добавить проверку на отправление всего объема данных
-            #             with LOCK:
-            #                 self.requests[fileno] = None
-                    # self.epoll.modify(fileno, select.EPOLLIN)
-            # self.__recv_message()
 
     def on_close(self, widget):
         self.signal.work = False
