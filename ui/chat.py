@@ -13,7 +13,7 @@ import pickle
 from threading import Lock, Thread
 
 LOCK = Lock()
-HOST = "127.0.0.1"
+HOST = "87.252.241.32"
 PORT = 5000
 
 
@@ -126,25 +126,27 @@ class ChatWindow(Gtk.Window):
                 os.path.dirname(
                     os.path.abspath(__file__)
                 ),
-                f".contacts/{data['user']}.png" if input
-                else "Avatar.png"
+                # f".contacts/{data['user']}.png" if input
+                # else "Avatar.png"
+                "Avatar.png"
             ),
             width=100,
             height=100,
             preserve_aspect_ratio=True,
         )
         avatar = Gtk.Image.new_from_pixbuf(pixbuf)
-        test_label = Gtk.Label()
-        test_label.set_markup(data["message"])
-        test_label.set_selectable(True)
-        test_label.set_line_wrap(True)
+        text_label = Gtk.Label()
+        text_label.set_markup(json.dumps(data["message"]))
+        text_label.set_selectable(True)
+        text_label.set_line_wrap(True)
         if input:
             message_box.pack_start(avatar, False, True, 5)
         else:
             message_box.pack_end(avatar, False, True, 5)
-            test_label.set_justify(Gtk.Justification.RIGHT)
-        message_box.pack_start(test_label, True, False, 5)
+            text_label.set_justify(Gtk.Justification.RIGHT)
+        message_box.pack_start(text_label, True, False, 5)
         self.chat_box.pack_start(message_frame, False, True, 5)
+        self.show_all()
 
     def regy_date(self, *args, **kwargs):
         self.login_win.hide()
@@ -190,12 +192,12 @@ class ChatWindow(Gtk.Window):
         # print("RUN", self.signal.work)
         self.epoll = select.epoll()
         self.connection.setblocking(0)
-        self.epoll.register(self.connection.fileno(), select.EPOLLIN)
+        # self.epoll.register(self.connection.fileno(), select.EPOLLIN)
         self.connections["default"] = self.connection
         self.responses["default"] = None
         self.requests["default"] = None
         self.epoll.register(self.connection.fileno(), select.EPOLLIN)
-        
+
         while True:
             if not self.signal.work:
                 break
@@ -203,15 +205,21 @@ class ChatWindow(Gtk.Window):
                 data = self.requests.get("default")
                 if data:
                     self.connections["default"].send(data.encode("utf-8"))
+                    self.__add_message_box(json.loads(data), False)
                 self.requests["default"] = None
-                self.epoll.modify(self.connection["default"].fileno(), select.EPOLLIN)
+                self.epoll.modify(
+                    self.connection.fileno(), select.EPOLLIN)
             events = self.epoll.poll(1)
-            for fileno, event in events:
-                if event & select.EPOLLIN:
-                    print("MESSAGE", self.responses.get["default"])
-                    # if self.responses.get[fileno]:
+            for fileno, _event in events:
+                if _event & select.EPOLLIN:
+                    # print("MESSAGE", self.responses.get["default"])
                     with LOCK:
-                        self.responses["default"] = (self.connections[fileno].recv(2048).decode("utf-8"))
+                        self.responses["default"] = json.loads(
+                            self.connections["default"].recv(
+                                2048).decode("utf-8")
+                        )
+                    if self.responses.get("default"):
+                        self.__add_message_box(self.responses["default"])
                     print("NEW MESSAGE", self.responses["default"])
                     self.responses[fileno] = None
                     self.epoll.modify(fileno, select.EPOLLOUT)
