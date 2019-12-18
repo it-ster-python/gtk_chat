@@ -12,6 +12,7 @@ import os
 from ui import event
 import pickle
 from threading import Lock, Thread
+from safetext import safetext
 
 
 LOCK = Lock()
@@ -135,7 +136,9 @@ class ChatWindow(Gtk.Window):
         )
         avatar = Gtk.Image.new_from_pixbuf(pixbuf)
         test_label = Gtk.Label()
-        test_label.set_markup(data["message"])
+        safe_message = data["message"]
+        message = safetext(safe_message, False)
+        test_label.set_markup(message)
         test_label.set_selectable(True)
         test_label.set_line_wrap(True)
         if input:
@@ -157,10 +160,10 @@ class ChatWindow(Gtk.Window):
             print("Данных почему то нет!")
             Gtk.main_quit()
         else:
-            self.__create_conntetion()
+            self.__create_connection()
             self.show_all()
 
-    def __create_conntetion(self):
+    def __create_connection(self):
         self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.connection.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.connection.connect((HOST, PORT))
@@ -226,7 +229,8 @@ class ChatWindow(Gtk.Window):
         Gtk.main_quit()
 
     def on_send_message(self, widget):
-        message = self.message_entry.get_text()
+        row_message = self.message_entry.get_text()
+        message = safetext(row_message, True)
         data = json.dumps(
             {"message": message, "user": self.login, "chat": self.chat_name}
         )
